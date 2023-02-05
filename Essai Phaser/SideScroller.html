@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en"> 
+<head> 
+
+    <meta charset="UTF-8" /><title> Mon 1er jeu Phaser</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.js"></script>
+    <style type = "text/css"> body {margin: 0; }</style>
+
+
+</head>
+<body>
+<script type = "text/javascript">
+
+    var config = {
+        type: Phaser.AUTO,
+        width: 800, 
+        physics: {
+            default: 'arcade',
+            arcade: {
+            gravity: { y: 400 },
+            debug: false
+            }},
+        height: 800,
+        scene: {preload: preload, create: create, update: update}
+
+        };
+        
+        new Phaser.Game(config);
+
+
+        function preload(){
+
+            // chargement tuiles de jeu 
+            this.load.image("tuilesDeJeu", "Tileset.png");
+
+            //chargement de la carte 
+            this.load.tilemapTiledJSON("carte", "Niveau.json");
+
+            //ajout d'un personnage 
+            this.load.image("perso", "billy.png"); 
+
+            //ajout des vies, le chiffre indique le nombre de coeurs visible sur l'interface afin d'indiquer les dégats pris par le joueur
+            this.load.image("vies", "vies.png")
+
+            this.load.image("vies2", "vies2.png")
+
+            this.load.image("vies1", "vies1.png")
+
+            this.load.image("vies0", "vies0.png")
+
+            //ajout de rideaux
+            this.load.image("rideaux", "rideaux.png")
+
+            //ajout des "piques" de l'eau (requins)
+            this.load.image("shark", "requin.png")
+
+            //ajout de l'ennemi
+            this.load.image("pantin", "pantin.png")
+
+        }
+
+        //déclaration des variables, certaines étant des var de tentatives de walljump ne fonctionnant pas
+        var player;
+        var cursors;
+        var platforms;
+        var vies;
+        var pantin;
+        var shark;
+        //var grounded = false;
+       // var canWallJump = false;
+        var gameOver = false;
+        //var cdJump;
+
+        //déclaration de la variable vie instanciée a 3 au début de la partie 
+        var compteurVies = 3;
+
+        function create(){
+
+
+            //chargement de la carte 
+            const carteDuNiveau = this.add.tilemap("carte"); 
+
+            //chargement du jeu de tuiles 
+            const tileset = carteDuNiveau.addTilesetImage ( 
+                "Tileset",
+                "tuilesDeJeu"
+            ); 
+
+            //chargement du calque de background 
+            const calque_background = carteDuNiveau.createLayer( 
+                "calque_background", 
+                tileset
+            ); 
+
+            //chargement du calque desplateformes 
+            const calque_plateforme = carteDuNiveau.createLayer( 
+                "calque_plateformes", 
+                tileset
+            ); 
+
+            //création et mise en place des requins sur le bas du niveau
+            shark = this.physics.add.staticGroup();
+            shark.create(450,1585, "shark");
+            shark.create(570,1585, "shark");
+            shark.create(610,1585, "shark");
+            shark.create(650,1585, "shark");
+            shark.create(760,1585, "shark");
+            shark.create(1040,1585, "shark");
+            shark.create(1150,1585, "shark");
+
+            //ajout de l'ennemi et de sa physique
+            pantin = this.physics.add.image(750, 950, "pantin");
+            this.physics.add.collider(pantin, calque_plateforme)
+            pantin.setBounce(1);
+
+            //vélocité du pantin permettant de se déplacer
+            pantin.setVelocityX(-200, 200);
+
+
+            //ajout de l'élément au premier plan, les rideaux permettant de donner une impression de pièce de théatre statique 
+            decoRideaux = this.add.sprite(600,600, "rideaux").setScrollFactor(0);
+            //déclaration de la profondeur de l'élément par rapport aux autres éléments du niveau (ici premier plan)
+            decoRideaux.depth = 3;
+
+            //ajout de l'interface affichant les vies
+            vies = this.add.sprite(400,400, "vies").setScrollFactor(0);
+
+            
+
+            //utilisation de la propriété estSolide pour obtenir les collisions avec les plateformes 
+            calque_plateforme.setCollisionByProperty({ estSolide : true}); 
+
+            //création du joueur et de sa phyqique
+            player = this.physics.add.image(40, 1300, "perso"); 
+            player.setBounce(0.1); 
+            player.depth = 2
+            player.setCollideWorldBounds(true); 
+            this.physics.add.collider(player, calque_plateforme);
+
+            //appel d'une fonction hitShark lorsque le joueur touche les requins (game Over)
+            this.physics.add.collider(player, shark, hitShark, null, this);
+
+            this.physics.add.collider(player, pantin, compteurVies, hitPantin, null, this);
+
+            
+
+            //ajout des input
+            cursors = this.input.keyboard.createCursorKeys();
+
+            //ajout de la caméra, sa taille et ses délimitations par rapport au niveau afin de ne pas avoir de bourdures noire
+            this.cameras.main.setBounds(0,0,1600, 1600)
+            this.cameras.main.setSize(800, 800);
+
+            //fonction de suivi du joueur pour la caméra avec une vitesse légèrement modifier pour correspondre a l'esthétique voulue
+            this.cameras.main.startFollow(player, false, 0.2, 0.2, 0.2,0.2);
+            this.physics.world.bounds.width = 1600
+            this.physics.world.bounds.height = 1600
+            
+
+        }
+
+        function update(){ 
+
+            if (cursors.left.isDown){ //si la touche gauche est appuyée
+                player.setVelocityX(-200); //alors vitesse négative en X
+                
+                }
+
+            else if (cursors.right.isDown){ //sinon si la touche droite est appuyée
+                player.setVelocityX(200); //alors vitesse positive en X
+                
+                }
+
+            else{ // sinon
+                player.setVelocityX(0); //vitesse nulle
+                
+                }
+
+            if (cursors.up.isDown && player.body.blocked.down){
+                //si touche haut appuyée ET que le perso est bloqué par le sol
+                player.setVelocityY(-235); //alors vitesse verticale négative
+            
+                }
+
+            if (gameOver == true){
+                console.log("PARTIE TERMINEE")
+            }
+            
+                //tentative de Wall Jump
+           // if (player.body.blocked.right && grounded == false){
+            //    canWallJump = true
+           // }
+
+           // if (cursors.up.isDown && player.body.blocked.right && grounded == false){
+                //canWallJump = true
+               // console.log("wall jump possible")
+             //   player.setVelocityX(-300);
+             //   player.setVelocityY(-300);
+            //}
+
+            //if (player.body.blocked.down == false){
+              // grounded == false;
+           // }
+
+            //if (player.body.blocked.left && grounded == false){
+                //canWallJump = true
+                //console.log("wall jump possible")
+           // }
+
+           if (compteurVies == 0){
+                player.setTint(0xff0000);
+                gameOver = true
+           }
+
+        }
+
+        //fonction déclarant la fin de partie et la mort du player si il rentre en contact avec les requins
+        function hitShark(player, shark){
+            this.physics.pause();
+            player.setTint(0xff0000);
+            gameOver = true;
+        }
+
+        //fonction pour que le joueur perde des vies lorsqu'il touche le pantin
+        function hitPantin(player, pantin, compteurVies){
+            console.log("touché")
+            compteurVies = compteurVies - 1
+        }
+
+</script>
+</body>
+</html>
